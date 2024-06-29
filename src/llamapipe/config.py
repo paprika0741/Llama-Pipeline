@@ -199,7 +199,7 @@ class LlamaConfig(PretrainedConfig):
         self.is_first_stage = (self.stage ==0)  # 第一个需要过embedding
         self.is_last_stage =  (self.stage  ==  self.total_stage - 1)   #最后一层需要过 pool和lm_head
         print("="*20)
-        print("stage={}\n total_stage={}\n num_pp_hidden_layers={}".format(self.stage, self.total_stage, self.num_pp_hidden_layers))
+        print(" stage={}\n total_stage={}\n num_pp_hidden_layers={}".format(self.stage, self.total_stage, self.num_pp_hidden_layers))
         print("="*20)
     def _rope_scaling_validation(self):
         """

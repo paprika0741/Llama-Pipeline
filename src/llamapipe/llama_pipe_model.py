@@ -1720,23 +1720,16 @@ class  StageModel(nn.Module):
                                               torch_dtype=torch.float16,
         )
         self.tokenizer = LlamaTokenizer.from_pretrained(config.model_dir)
-    def forward(self, input_ids,inputs_embeds=None):
-        outputs =  self.base_model( input_ids=input_ids, inputs_embeds=inputs_embeds)
-        if isinstance(outputs, CausalLMOutputWithPast):
-            print("Output is a CausalLMOutputWithPast instance")
-        elif isinstance(outputs, BaseModelOutputWithPast):
-            print("Output is a BaseModelOutputWithPast instance")
+    def forward(self, input_ids,inputs_embeds=None,past_key_values=None):
+        outputs =  self.base_model( input_ids=input_ids, 
+                                   inputs_embeds=inputs_embeds,
+                                   past_key_values=past_key_values)
         return outputs
     
     def decode_next_token(self,logits):
         next_token_logits = logits[:, -1, :]
         next_tokens_scores = F.softmax(next_token_logits, dim=-1)
-        # print("logits shape:", logits.shape)
-        # print("next_token_logits:", next_token_logits.shape)
         next_tokens = torch.argmax(next_tokens_scores, dim=-1)
-        # print("next_tokens:", next_tokens.shape)
-        print("next_token is:")
-        print(self.tokenizer.decode(next_tokens.cpu()[0], skip_special_tokens=True))
-        
+        return next_tokens
 
 

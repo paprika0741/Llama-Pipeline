@@ -24,7 +24,7 @@
     "vocab_size": 32000,
     "init_method":"tcp://127.0.0.1:23000"     ,
     "distributed_backend":"gloo",
-    "stage_num_hidden_layers_list":[   8,9,15],
+    "stage_num_hidden_layers_list":[   16,16],
     "model_dir":"../llama-2-7b/llama-2-7b-chat-hf"
   }
   
