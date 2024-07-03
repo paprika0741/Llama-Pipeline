@@ -17,7 +17,7 @@ from transformers.modeling_outputs import (
 import random
 import numpy as np
 import torch
- 
+import os
 def  initialize_distributed(config):
     print("Initializing process group...")
     torch.distributed.init_process_group(
@@ -35,6 +35,7 @@ def parse_args():
 
     return parser.parse_args()
 
+
 if __name__ == '__main__':
     args = parse_args()
     config =   LlamaConfig.from_pretrained(args.config_file )
@@ -43,7 +44,7 @@ if __name__ == '__main__':
     # config.print_config()
     tokenizer = LlamaTokenizer.from_pretrained(config.model_dir)
     model = StageModel(config).to("cuda")
-    input_text = "Suzhou is famous of its beautiful gardens. The most famous one is the Humble Administrator's Garden. It is a classical Chinese garden with a history of more than 600 years. The garden is #divided into three"
+    input_text =  "Suzhou is famous of its beautiful gardens. The most famous one is the Humble Administrator's Garden. It is a classical Chinese garden with a history of more than 600 years. The garden is divided into three parts."
     inputs = tokenizer(input_text, return_tensors="pt")
     inputs = inputs.to("cuda")
     bs,seq_len = inputs["input_ids"].shape
@@ -70,8 +71,8 @@ if __name__ == '__main__':
         next_tokens = model.decode_next_token(logits)
         print(model.tokenizer.decode(next_tokens.cpu()[0], skip_special_tokens=True))
     past_key_values = outputs.past_key_values
-
-    for idx in range( 10):
+    print("decoding")
+    for idx in range(  10):
         if config.is_last_stage:
             send_tensor = next_tokens.cpu()
             dist.send(tensor= send_tensor, dst=  0)
@@ -106,3 +107,6 @@ if __name__ == '__main__':
                     print("\n")
                     print("finish decoding")
                     break
+    max_memory = torch.cuda.max_memory_allocated(device=  "cuda")
+    print("Max memory:  {} ( {} MB ) ".format( max_memory , max_memory /(1024*1024) ))    
+    

@@ -2,6 +2,7 @@
 # Edit at https://www.toptal.com/developers/gitignore?templates=python
 v4.38.0.tar.gz
 transformers-4.38.0/
+temp*/*
 ### Python ###
 # Byte-compiled / optimized / DLL files
 __pycache__/

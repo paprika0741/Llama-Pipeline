@@ -20,11 +20,19 @@ def get_pretrained_stae_dict(weight_dir,total_layer_num):
     print("len(layer_dicts)", len(layer_dicts))
     print("len(layer_dicts[0])", len(layer_dicts[0]))
     return not_layer_dict,layer_dicts
-def get_stage_state_dict( weight_dir,stage_layer_num_list, rank):
+def get_stage_state_dict( weight_dir,stage_layer_num_list, rank, world_size):
     not_layer_dict,layer_dicts = get_pretrained_stae_dict(weight_dir, sum(stage_layer_num_list))
     print("len(not_layer_dict)", len(not_layer_dict))
     print("len(layer_dicts)", len(layer_dicts))
-    stage_state_dict = not_layer_dict
+    print(not_layer_dict.keys())
+    stage_state_dict = {}
+    # 处理 non_layer权重
+    if rank == 0:
+        stage_state_dict  ['model.embed_tokens.weight'] = not_layer_dict['model.embed_tokens.weight']
+    if rank == world_size - 1:
+        stage_state_dict  ['model.norm.weight'] = not_layer_dict['model.norm.weight']
+        stage_state_dict  ['lm_head.weight'] = not_layer_dict['lm_head.weight']
+        
     if rank == 0: # 序号是0开始
         left= 0
         right = stage_layer_num_list[0]

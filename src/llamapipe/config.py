@@ -174,6 +174,9 @@ class LlamaConfig(PretrainedConfig):
         self.is_first_stage = None
         self.is_last_stage = None
         self.num_pp_hidden_layers = None 
+        # Quantization Configuration
+        self.load_in_4bit=False
+        self.load_in_8bit=False
         super().__init__(
             pad_token_id=pad_token_id,
             bos_token_id=bos_token_id,

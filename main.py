@@ -55,7 +55,7 @@ outputs = model (  input_ids=  inputs["input_ids"])
 logits = outputs.logits
 print("logits shape:", logits.shape)
 torch.save(logits, "logits_main.pt"  )
-pred = model.generate(**inputs, max_length=51, temperature=0.1)
+pred = model.generate(**inputs, max_length=60, temperature=0.1)
 print(tokenizer.decode(pred.cpu()[0], skip_special_tokens=True))
 max_gpu_memory = torch.cuda.max_memory_allocated("cuda")
 
@@ -71,15 +71,17 @@ TemperatureLogitsWarper,
           StoppingCriteriaList,
             MaxLengthCriteria,
          )
+past_key_values = None
+
 input_text = "Suzhou is famous of its beautiful gardens. The most famous one is the Humble Administrator's Garden. It is a classical Chinese garden with a history of more than 600 years. The garden is divided into three parts."
 inputs = tokenizer(input_text, return_tensors="pt")
 inputs = inputs.to("cuda")
-print("inputs shape:", inputs["input_ids"].shape)
-outputs = model (  input_ids=  inputs["input_ids"])
+input_ids = inputs["input_ids"]
+print("Prefiling...")
+outputs = model (  input_ids = input_ids, past_key_values = past_key_values)
 logits = outputs.logits
+past_key_values = outputs.past_key_values
 next_token_logits = logits[:, -1, :]
-print("logits shape:", logits.shape)
-print("next_token_logits:", next_token_logits.shape)
 logits_processor = LogitsProcessorList(
       [
            TemperatureLogitsWarper( 0.1),
@@ -87,9 +89,18 @@ logits_processor = LogitsProcessorList(
         )
 next_tokens_scores =  logits_processor( inputs["input_ids"], next_token_logits)
 next_tokens = torch.argmax(next_tokens_scores, dim=-1)
-print("next_tokens:", next_tokens.shape)
-print(tokenizer.decode(next_tokens.cpu()[0], skip_special_tokens=True))
+next_tokens = next_tokens.unsqueeze(-1)
+input_ids = torch.cat([input_ids, next_tokens], dim=-1)
 
-
-
- 
+print("Decoding...")
+for idx in range( 10):
+    outputs = model (  input_ids= next_tokens , 
+                     past_key_values = past_key_values)
+    past_key_values = outputs.past_key_values
+    logits = outputs.logits
+    next_token_logits = logits[:, -1, :]
+    next_tokens_scores =  logits_processor(input_ids , next_token_logits)
+    next_tokens = torch.argmax(next_tokens_scores, dim=-1)
+    next_tokens = next_tokens.unsqueeze(-1)
+    input_ids = torch.cat([input_ids, next_tokens], dim=-1)
+print(tokenizer.decode(input_ids.cpu()[0], skip_special_tokens=True))

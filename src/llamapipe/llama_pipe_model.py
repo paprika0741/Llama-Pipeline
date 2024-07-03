@@ -1312,9 +1312,9 @@ class LlamaModelPP(LlamaPreTrainedModel):
         super().__init__(config)
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
-        # [modified]
-        if config.is_first_stage:
-            self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
+        # [modified] 由于
+        # if config.is_first_stage:
+        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
         # [modified]
         self.layers = nn.ModuleList(
             [LlamaDecoderLayer(config, layer_idx) for layer_idx in range(config.num_pp_hidden_layers)]
@@ -1507,8 +1507,8 @@ class LlamaForCausalLMPP(LlamaPreTrainedModel):
         self.model = LlamaModelPP(config)
         self.vocab_size = config.vocab_size
         # [modified]
-        if config.is_last_stage:
-            self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        # if config.is_last_stage: TODO: 由于bitsandbytes.py 调用model.get_output_embeddings 需要 return self.lm_head
+        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -1707,12 +1707,44 @@ class LlamaForCausalLMPP(LlamaPreTrainedModel):
             )
         return reordered_past
 from src.llamapipe.load_weight import get_stage_state_dict
+import shutil
+import os
+def save_state_dict(state_dict, save_path):
+    # Ensure the directory exists or create it
+    print("Saving model to {}".format(save_path))
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    # Remove contents if directory already exists
+    if os.path.exists(save_path):
+        if os.path.isdir(save_path):
+            shutil.rmtree(save_path)
+        else:
+            os.remove(save_path)
+
+    # Save the state_dict to the specified path
+    torch.save(state_dict, save_path)
 class  StageModel(nn.Module):
     def __init__(self, config):
         super(StageModel, self).__init__()
         self.config = config
-        stage_state_dict = get_stage_state_dict(config.model_dir, config.stage_num_hidden_layers_list, config.stage)
-        self.base_model =  LlamaForCausalLMPP.from_pretrained(
+        stage_state_dict = get_stage_state_dict(config.model_dir, 
+                                                config.stage_num_hidden_layers_list, 
+                                                config.stage, 
+                                                config.total_stage)
+        if config.load_in_4bit or config.load_in_8bit:
+            temp_path = "temp{}/stage.bin".format(config.stage)
+            save_state_dict(stage_state_dict, temp_path)
+            with torch.device("cuda"):
+                del stage_state_dict
+                self.base_model =  LlamaForCausalLMPP.from_pretrained(
+                                            pretrained_model_name_or_path=  temp_path,
+                                                    config=config, 
+                                                    use_safetensors=False ,
+                                                    torch_dtype=torch.float16,
+                                                        load_in_4bit=config.load_in_4bit,
+                                                            load_in_8bit=config.load_in_8bit
+                )
+        else:
+            self.base_model =  LlamaForCausalLMPP.from_pretrained(
                                      pretrained_model_name_or_path=  None,
                                               config=config, 
                                               state_dict = stage_state_dict, 
