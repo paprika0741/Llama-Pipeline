@@ -43,7 +43,12 @@ if __name__ == '__main__':
     config.update_pp_stage_config(args)
     # config.print_config()
     tokenizer = LlamaTokenizer.from_pretrained(config.model_dir)
+    mem_before = torch.cuda.memory_allocated(0)
     model = StageModel(config).to("cuda")
+    mem_after = torch.cuda.memory_allocated(0)
+    print( "Model memory ",  (mem_after - mem_before)/(1024*1024))
+    print( "Model memory footprint",  model.base_model.get_memory_footprint()/(1024*1024))
+
     input_text =  "Suzhou is famous of its beautiful gardens. The most famous one is the Humble Administrator's Garden. It is a classical Chinese garden with a history of more than 600 years. The garden is divided into three parts."
     inputs = tokenizer(input_text, return_tensors="pt")
     inputs = inputs.to("cuda")
@@ -62,6 +67,7 @@ if __name__ == '__main__':
     if not config.is_last_stage:
         assert isinstance(outputs, BaseModelOutputWithPast)
         hidden_states = outputs.last_hidden_state
+        print("hidden_states dtype:", hidden_states.dtype)
         # send to next stage
         send_tensor = hidden_states.cpu()
         dist.send(tensor= send_tensor, dst= config.next_rank)

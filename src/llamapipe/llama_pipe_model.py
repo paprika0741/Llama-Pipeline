@@ -1312,9 +1312,8 @@ class LlamaModelPP(LlamaPreTrainedModel):
         super().__init__(config)
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
-        # [modified] 由于
-        # if config.is_first_stage:
-        self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
+        if config.is_first_stage:
+            self.embed_tokens = nn.Embedding(config.vocab_size, config.hidden_size, self.padding_idx)
         # [modified]
         self.layers = nn.ModuleList(
             [LlamaDecoderLayer(config, layer_idx) for layer_idx in range(config.num_pp_hidden_layers)]
@@ -1331,7 +1330,10 @@ class LlamaModelPP(LlamaPreTrainedModel):
         self.post_init()
 
     def get_input_embeddings(self):
-        return self.embed_tokens
+        if self.config.is_first_stage:
+            return self.embed_tokens
+        else:
+            return None
 
     def set_input_embeddings(self, value):
         self.embed_tokens = value
@@ -1507,8 +1509,8 @@ class LlamaForCausalLMPP(LlamaPreTrainedModel):
         self.model = LlamaModelPP(config)
         self.vocab_size = config.vocab_size
         # [modified]
-        # if config.is_last_stage: TODO: 由于bitsandbytes.py 调用model.get_output_embeddings 需要 return self.lm_head
-        self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        if config.is_last_stage:  
+            self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
         # Initialize weights and apply final processing
         self.post_init()
@@ -1520,8 +1522,11 @@ class LlamaForCausalLMPP(LlamaPreTrainedModel):
         self.model.embed_tokens = value
 
     def get_output_embeddings(self):
-        return self.lm_head
-
+        # [modified]
+        if self.config.is_last_stage:
+            return self.lm_head
+        else:
+            return None
     def set_output_embeddings(self, new_embeddings):
         self.lm_head = new_embeddings
 
@@ -1734,7 +1739,7 @@ class  StageModel(nn.Module):
             temp_path = "temp{}/stage.bin".format(config.stage)
             save_state_dict(stage_state_dict, temp_path)
             with torch.device("cuda"):
-                del stage_state_dict
+                # del stage_state_dict
                 self.base_model =  LlamaForCausalLMPP.from_pretrained(
                                             pretrained_model_name_or_path=  temp_path,
                                                     config=config, 
@@ -1743,6 +1748,7 @@ class  StageModel(nn.Module):
                                                         load_in_4bit=config.load_in_4bit,
                                                             load_in_8bit=config.load_in_8bit
                 )
+ 
         else:
             self.base_model =  LlamaForCausalLMPP.from_pretrained(
                                      pretrained_model_name_or_path=  None,
