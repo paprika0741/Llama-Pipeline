@@ -1,7 +1,6 @@
 # Llama-Pipeline
 
-`run_test.py`: pipeline 推理出后续 n 个词
-
+`run_test.py`: Pipeline inference to generate the next n tokens.
 ```
  CUDA_VISIBLE_DEVICES=1  python  run_test.py  --rank 0 --world 2 --config_file ./src/llamapipe/config.json
  CUDA_VISIBLE_DEVICES=1  python  run_test.py  --rank 1 --world 2 --config_file ./src/llamapipe/config.json
@@ -15,14 +14,14 @@
 
 ## Quantization
 
-`config.json` 参数
+`config.json` parameters:
 
 - `load_in_4bit`
 - `load_in_8bit`
 
 split = `[16,16]`
 
-最大内存(模型参数内存)
+Peak memory usage (model parameter memory)
 | data type | stage 0 | stage 1 |
 | :-------- | :----------------: | ----------------: |
 | fp16 | 7046 MB ( 6554 MB) | 7044 MB (6554 MB) |
